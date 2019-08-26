@@ -24,44 +24,45 @@ rm(df_tmp,file,my_files)
 
 total$area <- as.integer(total$area)
 total$precio <- as.integer(total$precio)
+
+#creamos la columna que genera la relacion precio y area (precio del metro cuadrado)
 total$precio_m2 <- apply(total,1,function(x) trunc(as.numeric(x[5])/as.numeric(x[4])))
 ##hacemos de la zona un factor
 total$zona <- as.factor(total$zona)
 levels(total$zona) <- c("CENTRO","POBLADO","NOROCCIDENTE","SUROCCIDENTE")
 
 summary(total)
-####### analisis exploratorio 
-## se detecta que el Ã rea minima verosimil es de 10 M2
-## se detectan 2 registros con nulo en el precio 
-## table(total[total$area >= 300,3]) para detectar el max area verosimil
-## la cual se  concluye que es 1000
-nuevo  <- total[(total$area >= 10 & total$area <= 1000) & (!is.na(total$precio) & total$precio > 0), c(2,3,4,5,6,7)]
-summary(nuevo)
-###########################3
-# análisis gráfico, qué elementos no tienen una proporción coherente
-# de  precio segun el lugar
-# se saca este gráfico para cada una de las zonas
 
-test <- nuevo[nuevo$zona == 2,]
-ggplot(data = test) + 
-  geom_point(mapping = aes(x = lugar, y = precio_m2)) +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
-rm(test)
-## se detectan y eliminan los anuncios que no son coherentes según 
-## el gráfico
-nuevo <- subset(nuevo,!(nuevo$codigo %in% c("599464","579250","705523","690301","603142","667397")))
+nuevo <- total
+
+####### analisis exploratorio ## 
+################################
+# graficar y detectar los outliers por zona
+ggplot(nuevo, aes(nuevo$zona, nuevo$precio_m2)) +
+  geom_boxplot() +
+  coord_flip()
+
+## se detectan y eliminan los anuncios que no son coherentes segï¿½n 
+## el grï¿½fico usando la relacion  precio metro cuadrado 
+for(lazona in levels(nuevo$zona)){
+  
+  test <- nuevo[nuevo$zona == lazona,]  
+  
+  meanD = mean(test$precio_m2,na.rm = TRUE)
+  
+  sdD = sd(test$precio_m2,na.rm = TRUE)
+  
+  outliers = subset(test, (abs(test[, 7] - meanD) > 2 * sdD ))
+  
+  nuevo <- nuevo[ !(nuevo$codigo %in% outliers$codigo), ]
+}
 ##
-## Se vuelve a analizar cada zona en función de la
-## relación precio del M2 Vs area
-test <- nuevo[nuevo$zona == "CENTRO",]
-ggplot(data = test) + 
-  geom_point(mapping = aes(x = area, y = precio_m2)) +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
-## se detectan y eliminan los anuncios que no son coherentes según 
-## el gráfico
-nuevo <- subset(nuevo,!(nuevo$codigo %in% c("742325","714155","688077","688058","581789","566926","536975","380667","701860","704475","712867","592599","599462","664643","732001")))
-nuevo <- subset(nuevo,!(nuevo$codigo %in% c("741381","742619","736483","697413","660762","595459","506242","495974","741166","737918","751029","731007","716037","678075","675300","667140","652216","567417","532542","474087","327932","744261","685028","637329","683183","669260","652849")))
-nuevo <- subset(nuevo,!(nuevo$codigo %in% c("585134","634599","749603","427358","730729","620169","572615","427358")))
+## Se vuelve a analizar cada zona en funciï¿½n de la
+## relaciï¿½n precio del M2 Vs area
+# graficar y detectar los outliers por zona
+ggplot(nuevo, aes(nuevo$zona, nuevo$precio_m2)) +
+  geom_boxplot() +
+  coord_flip()
 ##graficas
 ggplot(data = nuevo, aes(x = zona)) +
   geom_bar(colour="black", fill="#61d43c", width=.8, stat="count")+
@@ -133,11 +134,4 @@ ggplot(data = filter(nuevo,precio < 1000000)) +
   geom_histogram(mapping = aes(x = precio),binwidth = 100000,fill='#008000') +
   ylab("Oferta") + 
   xlab("Area")
-
-
-
-
-
-
-
 
